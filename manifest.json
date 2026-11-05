@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.nomanur.notes",
+  "name": "Notes",
+  "version": "0.1.0",
+  "author": "nomanur",
+  "license": "MIT",
+  "description": "A macOS Notes-style notes app for Omarchy. Three-pane window (folders, note list, Markdown editor) that also opens as a floating Quick Note from the bottom-right hot corner. Summon with: omarchy-shell shell toggle io.github.nomanur.notes",
+  "kinds": [
+    "panel",
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "Panel.qml",
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Notes",
+    "description": "Bar icon that toggles the Notes panel",
+    "category": "Productivity",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "showIcon": true
+    },
+    "schema": [
+      {
+        "key": "showIcon",
+        "type": "boolean",
+        "label": "Show the icon in the bar (the keybind works either way)",
+        "defaultValue": true
+      }
+    ]
+  }
+}
