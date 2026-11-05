@@ -19,7 +19,7 @@
   },
   "barWidget": {
     "displayName": "Notes",
-    "description": "Bar icon that toggles the Notes panel",
+    "description": "Bar button that toggles the Notes panel",
     "category": "Productivity",
     "allowMultiple": false,
     "defaultSection": "right",
@@ -30,7 +30,7 @@
       {
         "key": "showIcon",
         "type": "boolean",
-        "label": "Show the icon in the bar (the keybind works either way)",
+        "label": "Show the button in the bar (the keybind works either way)",
         "defaultValue": true
       }
     ]

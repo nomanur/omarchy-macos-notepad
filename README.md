@@ -27,7 +27,7 @@ follows the Omarchy theme automatically.
   actions, and cross-note edits (Ctrl+Z / Ctrl+Shift+Z).
 - **Keyboard shortcuts**: `Ctrl+N` new note, `Ctrl+Shift+P` pin,
   `Ctrl+F` search, `Ctrl+Backspace` trash, `Esc` close.
-- **Bar widget**: optional icon in the bar (right section by default).
+- **Bar widget**: optional `N` button in the bar (right section by default).
 - **Hot corner**: bottom-right dwell (150 ms, 4 px trigger from
   `~/.config/omarchy/hotcorners.json`) opens a persistent Quick Note
   scratchpad as a floating flyout that slides/scale-animates in from the
@@ -50,7 +50,7 @@ Or add it from a git URL (if you publish it):
 omarchy plugin add <git-url> --enable
 ```
 
-Add the bar icon (optional):
+Add the bar button (optional):
 
 ```
 omarchy bar put io.github.nomanur.notes --section right
@@ -70,7 +70,7 @@ omarchy bar set io.github.nomanur.notes showIcon true --json
 
 ## Usage
 
-- Open full window: bar icon, or
+- Open full window: bar `N` button, or
   `omarchy-shell shell toggle io.github.nomanur.notes`.
 - Quick Note: hover the bottom-right corner (dwell 150 ms), or
   `omarchy-shell shell summon io.github.nomanur.notes '{"mode":"quick"}'`.
@@ -123,7 +123,7 @@ manifest.json     plugin registration (panel + service + bar-widget)
 Panel.qml         main window: full 3-pane / quick flyout, store, undo
 Service.qml       always-on half: hosts HotCorner, IPC surface
 HotCorner.qml     bottom-right corner listener (dwell + cooldown)
-BarWidget.qml     bar icon
+BarWidget.qml     bar widget (`N` button)
 NotesSidebar.qml  folders + trash + search source
 NotesList.qml     note rows (title/date/preview), pinned-first
 NotesEditor.qml   title + TextArea Markdown editor + Preview

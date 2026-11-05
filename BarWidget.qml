@@ -19,17 +19,13 @@ BarWidget {
     implicitWidth: showIcon ? button.implicitWidth : 0
     implicitHeight: showIcon ? button.implicitHeight : 0
 
-    WidgetButton {
+    BarIconButton {
         id: button
         visible: root.showIcon
         anchors.fill: parent
         bar: root.bar
-        text: "Notes"
-        foreground: Color.accent
-        fontSize: Style.font.body
+        text: "N"
         tooltipText: "Notes (Ctrl+N for a new note)"
-        fixedWidth: root.bar && root.bar.vertical ? -1 : Style.space(27)
-        fixedHeight: root.bar && root.bar.vertical ? Style.space(26) : -1
         onPressed: function(b) {
             if (!root.bar) return
             root.bar.run("omarchy-shell shell toggle io.github.nomanur.notes")
