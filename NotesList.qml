@@ -8,7 +8,6 @@ import "NoteStore.js" as Store
 //
 // Each row: title (bold, truncated), relative date, 1-2 line preview.
 // Pinned notes sort to the top (Store.filterNotes already orders them).
-// Trash mode shows Restore / Delete forever actions instead of Pin.
 
 Item {
     id: root
@@ -16,16 +15,13 @@ Item {
     property var store: null
     property var notes: []          // filtered + sorted, owned by Panel.qml
     property string activeNoteId: ""
-    property bool showTrash: false
     property color foreground: Color.menu.text
     property color muted: Color.muted
     property string fontFamily: Style.font.menuFamily
 
     signal noteClicked(string noteId)
     signal notePinned(string noteId)
-    signal noteTrashed(string noteId)
-    signal noteRestored(string noteId)
-    signal noteDeletedForever(string noteId)
+    signal noteDeleted(string noteId)
     signal noteDuplicated(string noteId)
     signal newNoteRequested()
 
@@ -54,7 +50,7 @@ Item {
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
             textFormat: Text.PlainText
-            text: root.showTrash ? "Trash is empty" : "No notes"
+            text: "No notes"
             color: root.muted
             font.family: root.fontFamily
             font.pixelSize: Style.font.body
@@ -177,7 +173,6 @@ Item {
             spacing: Style.spacing.xxs
 
             Button {
-                visible: !root.showTrash
                 width: parent.width
                 text: root.contextNote && root.contextNote.pinned ? "Unpin" : "Pin"
                 bordered: false
@@ -186,7 +181,6 @@ Item {
                 onClicked: { root.notePinned(root.contextNoteId); root.contextOpen = false; }
             }
             Button {
-                visible: !root.showTrash
                 width: parent.width
                 text: "Duplicate"
                 bordered: false
@@ -195,42 +189,15 @@ Item {
                 onClicked: { root.noteDuplicated(root.contextNoteId); root.contextOpen = false; }
             }
             Button {
-                visible: !root.showTrash
                 width: parent.width
-                text: "Move to Trash"
+                text: "Delete"
                 bordered: false
                 foreground: root.foreground
                 fontFamily: root.fontFamily
-                onClicked: { root.noteTrashed(root.contextNoteId); root.contextOpen = false; }
-            }
-            Button {
-                visible: root.showTrash
-                width: parent.width
-                text: "Restore"
-                bordered: false
-                foreground: root.foreground
-                fontFamily: root.fontFamily
-                onClicked: { root.noteRestored(root.contextNoteId); root.contextOpen = false; }
-            }
-            Button {
-                visible: root.showTrash
-                width: parent.width
-                text: "Delete forever"
-                bordered: false
-                foreground: root.foreground
-                fontFamily: root.fontFamily
-                onClicked: { root.noteDeletedForever(root.contextNoteId); root.contextOpen = false; }
+                onClicked: { root.noteDeleted(root.contextNoteId); root.contextOpen = false; }
             }
         }
 
-        MouseArea {
-            anchors.fill: parent
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            onClicked: {
-                // Clicking inside the card but outside a button holds the menu.
-                root.contextOpen = false;
-            }
-        }
     }
 
     MouseArea {

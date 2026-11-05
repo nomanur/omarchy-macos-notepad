@@ -7,22 +7,18 @@ import "Markdown.js" as Md
 
 // NotesEditor.qml — detail pane: title field + formatting bar + Markdown editor.
 //
-// The editor is a TextArea in Markdown mode (per spec). Formatting routes
+// The editor is a TextArea in Markdown mode. Formatting routes
 // through applyFormat() which mutates the TextArea text + restores the
 // caret in one step; undo/redo are TextArea's built-in (and Panel.qml
 // pushes a snapshot per format action into its own history so formatting
 // survives reload — actually the per-note undo stack lives on the edited
 // note via Panel.qml).
-//
-// Markdown rendering: the editor edits source; a read-only preview toggle
-// ("Preview") renders the same source as rich text below.
 
 Item {
     id: root
 
     property var note: null            // live reference into store.notes
     property int fontSize: 14
-    property bool preview: false
     property color foreground: Color.menu.text
     property color muted: Color.muted
     property color background: Color.menu.background
@@ -74,7 +70,20 @@ Item {
         formatWith(r);
     }
 
-    function focusEditor() { editor.forceActiveFocus(); }
+    function focusEditor() {
+        editor.forceActiveFocus();
+    }
+
+    onNoteChanged: {
+        if (!note) return;
+        // Switch note text without triggering onTextChanged (which would
+        // push a bogus undo snapshot and overwrite the note).
+        editor.text = note.body || "";
+    }
+
+    Component.onCompleted: {
+        if (note) editor.text = note.body || "";
+    }
 
     // ---- layout ----------------------------------------------------------
 
@@ -107,7 +116,6 @@ Item {
 
             ScrollView {
                 id: editorScroll
-                visible: !root.preview
                 anchors.fill: parent
                 clip: true
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
@@ -115,6 +123,7 @@ Item {
                 TextArea {
                     id: editor
                     width: parent.width
+                    height: Math.max(parent.height, implicitHeight)
                     wrapMode: TextArea.Wrap
                     rightPadding: editorScroll.ScrollBar.vertical.width + Style.spacing.xs
                     font.family: root.fontFamily
@@ -135,24 +144,6 @@ Item {
                         else if (ctrl && (event.key === Qt.Key_Y || (event.key === Qt.Key_Z && (event.modifiers & Qt.ShiftModifier)))) { root.redoPressed(); event.accepted = true; }
                         else if (ctrl && event.key === Qt.Key_L) { /* reserved */ }
                     }
-                }
-            }
-
-            Flickable {
-                visible: root.preview
-                anchors.fill: parent
-                contentWidth: width
-                contentHeight: previewDoc.implicitHeight
-                clip: true
-                Text {
-                    id: previewDoc
-                    width: parent.width
-                    text: root.note ? root.note.body : ""
-                    textFormat: Text.MarkdownText
-                    wrapMode: Text.Wrap
-                    color: root.foreground
-                    font.family: root.fontFamily
-                    font.pixelSize: root.fontSize
                 }
             }
         }

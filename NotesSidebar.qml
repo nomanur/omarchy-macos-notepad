@@ -4,11 +4,9 @@ import qs.Commons
 import qs.Ui
 import "NoteStore.js" as Store
 
-// NotesSidebar.qml — folder list + trash + search source.
+// NotesSidebar.qml — folder list + search source.
 //
-// macOS Notes sidebar: Folders section list, each row shows an icon,
-// name, and note count. Trash lives at the bottom. Selection is bound to
-// the single `activeFolderId` / `showTrash` on the store object (owned by
+// Selection is bound to the single `activeFolderId` on the store (owned by
 // Panel.qml), so this component is purely presentational.
 
 Item {
@@ -21,31 +19,25 @@ Item {
     property string fontFamily: Style.font.menuFamily
 
     signal folderClicked(string folderId)
-    signal trashClicked()
     signal newFolderRequested()
 
     implicitWidth: Style.space(180)
 
-    readonly property var folderList: store ? store.folders : []
+    readonly property var folderList: store ? store.folders.filter(f => f.id !== "trash") : []
 
     function countFor(folderId) {
         if (!store) return 0;
         var n = 0;
         for (var i = 0; i < store.notes.length; i++) {
             var note = store.notes[i];
-            if (folderId === "trash") {
-                if (note.deletedAt != null) n++;
-            } else if (note.deletedAt == null && note.folderId === folderId) {
-                n++;
-            }
+            if (note.folderId === folderId) n++;
         }
         return n;
     }
 
     function isActive(folderId) {
         if (!store) return false;
-        if (folderId === "trash") return store.settings.showTrash;
-        return !store.settings.showTrash && store.settings.activeFolderId === folderId;
+        return store.settings.activeFolderId === folderId;
     }
 
     Column {
@@ -87,7 +79,7 @@ Item {
                     spacing: Style.spacing.sm
 
                     Text {
-                        text: modelData.id === "trash" ? "Trash" : (modelData.id === "inbox" ? "Notes" : modelData.name)
+                        text: modelData.id === "inbox" ? "Notes" : modelData.name
                         textFormat: Text.PlainText
                         color: root.foreground
                         font.family: root.fontFamily
@@ -110,11 +102,12 @@ Item {
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
                     onEntered: folderRow.hovered = true
                     onExited: folderRow.hovered = false
-                    onClicked: {
-                        if (modelData.id === "trash") root.trashClicked();
-                        else root.folderClicked(modelData.id);
+                    onClicked: function(m) {
+                        if (m.button === Qt.RightButton) return;
+                        root.folderClicked(modelData.id);
                     }
                 }
             }

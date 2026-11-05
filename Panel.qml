@@ -162,11 +162,9 @@ Item {
 
     function recomputeFiltered() {
         if (!root.store) { root.filteredNotes = []; return; }
-        var showTrash = root.store.settings.showTrash;
         var folderId = root.store.settings.activeFolderId;
         root.filteredNotes = Store.filterNotes(root.store.notes, {
             folderId: folderId,
-            showTrash: showTrash,
             query: root.searchText
         });
         // Keep the selection inside the filtered set when possible.
@@ -186,13 +184,11 @@ Item {
     // ---- note operations ----------------------------------------------------
 
     function createNote() {
-        var showTrash = root.store.settings.showTrash;
-        var folderId = showTrash ? "inbox" : (root.store.settings.activeFolderId || "inbox");
+        var folderId = root.store.settings.activeFolderId || "inbox";
         var note = Store.newNote(folderId);
         root.store.notes.push(note);
         root.store.settings.activeNoteId = note.id;
         root.activeNoteId = note.id;
-        if (showTrash) root.store.settings.showTrash = false;
         root.pushUndo(note.id, "");
         root.recomputeFiltered();
         root.scheduleSave();
@@ -202,7 +198,7 @@ Item {
     function getOrCreateQuickNote() {
         var id = root.store.settings.quickNoteId;
         var note = id ? Store.findNote(root.store, id) : null;
-        if (!note || note.deletedAt != null) {
+        if (!note) {
             note = Store.newNote("inbox");
             note.title = "Quick Note";
             root.store.notes.push(note);
@@ -285,23 +281,7 @@ Item {
         root.scheduleSave();
     }
 
-    function trash(id) {
-        var n = Store.findNote(root.store, id);
-        if (!n) return;
-        Store.trashNote(n);
-        root.recomputeFiltered();
-        root.scheduleSave();
-    }
-
-    function restore(id) {
-        var n = Store.findNote(root.store, id);
-        if (!n) return;
-        Store.restoreNote(n);
-        root.recomputeFiltered();
-        root.scheduleSave();
-    }
-
-    function deleteForever(id) {
+    function deleteNote(id) {
         Store.deleteForever(root.store, id);
         if (root.activeNoteId === id) root.activeNoteId = "";
         root.recomputeFiltered();
@@ -318,14 +298,7 @@ Item {
     }
 
     function selectFolder(folderId) {
-        root.store.settings.showTrash = false;
         root.store.settings.activeFolderId = folderId;
-        root.recomputeFiltered();
-        root.scheduleSave();
-    }
-
-    function selectTrash() {
-        root.store.settings.showTrash = true;
         root.recomputeFiltered();
         root.scheduleSave();
     }
@@ -349,10 +322,22 @@ Item {
             root.refreshActive();
         }
         Qt.callLater(function() {
-            if (mode === "quick" && !root.collapsed) editor.focusEditor();
+            if (mode === "quick" && !root.collapsed) quickEditor.focusEditor();
             else if (mode === "full") editor.focusEditor();
         });
         root.scheduleSave();
+    }
+
+    function focusActiveEditor() {
+        if (root.isQuick) {
+            if (!root.collapsed) quickEditor.focusEditor();
+        } else {
+            editor.focusEditor();
+        }
+    }
+
+    onOpenedChanged: {
+        if (root.opened) Qt.callLater(function() { root.focusActiveEditor(); });
     }
 
     function close() {
@@ -503,7 +488,6 @@ Item {
                         muted: root.muted
                         fontFamily: root.fontFamily
                         onFolderClicked: root.selectFolder(folderId)
-                        onTrashClicked: root.selectTrash()
                         onSearchTextChanged: { root.searchText = searchText; root.recomputeFiltered(); }
                     }
                     Item {
@@ -517,15 +501,12 @@ Item {
                         store: root.store
                         notes: root.filteredNotes
                         activeNoteId: root.activeNoteId
-                        showTrash: root.store ? root.store.settings.showTrash : false
                         foreground: root.foreground
                         muted: root.muted
                         fontFamily: root.fontFamily
                         onNoteClicked: root.selectNote(noteId)
                         onNotePinned: root.togglePin(noteId)
-                        onNoteTrashed: root.trash(noteId)
-                        onNoteRestored: root.restore(noteId)
-                        onNoteDeletedForever: root.deleteForever(noteId)
+                        onNoteDeleted: root.deleteNote(noteId)
                         onNoteDuplicated: root.duplicate(noteId)
                         onNewNoteRequested: root.createNote()
                     }
@@ -542,7 +523,7 @@ Item {
                             anchors.fill: parent
                             spacing: Style.spacing.xs
 
-                            // Toolbar row: New / Pin / Duplicate / Trash + Preview toggle.
+                            // Toolbar row: New / Pin / Duplicate / Delete.
                             Row {
                                 id: toolbar
                                 width: parent.width
@@ -569,19 +550,11 @@ Item {
                                 }
                                 PanelActionButton {
                                     iconText: "🗑"
-                                    tooltipText: "Move to Trash (Ctrl+Backspace)"
+                                    tooltipText: "Delete note permanently (Ctrl+Backspace)"
                                     foreground: root.foreground
-                                    onClicked: { if (root.activeNoteId) root.trash(root.activeNoteId); }
+                                    onClicked: { if (root.activeNoteId) root.deleteNote(root.activeNoteId); }
                                 }
                                 Item { width: Style.space(8); height: 1 }
-                                Button {
-                                    text: editor.preview ? "Edit" : "Preview"
-                                    bordered: true
-                                    foreground: root.foreground
-                                    fontFamily: root.fontFamily
-                                    fontSize: Style.font.bodySmall
-                                    onClicked: editor.preview = !editor.preview
-                                }
                                 Button {
                                     text: root.stayOnTop ? "Pinned" : "Pin"
                                     bordered: true
@@ -603,8 +576,8 @@ Item {
                                 muted: root.muted
                                 background: root.background
                                 fontFamily: root.fontFamily
-                                onTextChanged: root.editBody(root.activeNoteId, body)
-                                onTitleChanged: root.renameNote(root.activeNoteId, title)
+                                onTextChanged: function(body) { root.editBody(root.activeNoteId, body); }
+                                onTitleChanged: function(title) { root.renameNote(root.activeNoteId, title); }
                                 onUndoPressed: root.undo()
                                 onRedoPressed: root.redo()
                             }
@@ -666,8 +639,8 @@ Item {
                         muted: root.muted
                         background: root.background
                         fontFamily: root.fontFamily
-                        onTextChanged: root.editBody(root.activeNoteId, body)
-                        onTitleChanged: root.renameNote(root.activeNoteId, title)
+                        onTextChanged: function(body) { root.editBody(root.activeNoteId, body); }
+                        onTitleChanged: function(title) { root.renameNote(root.activeNoteId, title); }
                         onUndoPressed: root.undo()
                         onRedoPressed: root.redo()
                     }
@@ -702,7 +675,7 @@ Item {
                     }
                     event.accepted = true;
                 } else if (ctrl && event.key === Qt.Key_Backspace) {
-                    if (root.activeNoteId) root.trash(root.activeNoteId);
+                    if (root.activeNoteId) root.deleteNote(root.activeNoteId);
                     event.accepted = true;
                 }
             }

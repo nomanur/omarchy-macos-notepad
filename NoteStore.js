@@ -11,11 +11,10 @@
 //     id:        string  — unique id (Date.now().toString(36) + counter)
 //     title:     string  — derived from first line when untouched, else custom
 //     body:      string  — Markdown source
-//     folderId:  string  — id of parent folder ("inbox" | "trash" | custom)
+//     folderId:  string  — id of parent folder ("inbox" | custom)
 //     pinned:    boolean
 //     created:   number
 //     modified:  number
-//     deletedAt: number|null — set when trashed; null otherwise
 //   }
 //
 // Folder shape:
@@ -27,7 +26,6 @@
 //     folders: [Folder],
 //     notes: [Note],
 //     settings: {
-//       showTrash: boolean,          — sidebar mode (false = browse folders)
 //       activeFolderId: string,      — currently selected folder
 //       activeNoteId: string|null,   — currently open note
 //       lastMode: "full"|"quick"     — last window mode used
@@ -41,7 +39,7 @@
 //   }
 //
 // TODO(future editions of this file):
-//   - Folders are stored but the UI ships with inbox + trash only; custom
+//   - Folders are stored but the UI ships with inbox only; custom
 //     folder creation is a later addition. The model already supports it.
 
 var COUNTER = 0
@@ -63,14 +61,36 @@ function newNote(folderId) {
     var t = now();
     return {
         id: uid(),
-        title: "New Note",
+        title: "New note",
         body: "",
         folderId: folderId || "inbox",
         pinned: false,
         created: t,
-        modified: t,
-        deletedAt: null
+        modified: t
     };
+}
+
+// macOS convention: duplicates are named "New note-2", "New note-3", ...
+// so a fresh note never has exactly the same visible name as an existing one.
+function uniqueNewNoteTitle(store) {
+    return uniquifyTitle(store, "New note");
+}
+
+function uniquifyTitle(store, base) {
+    var name = base;
+    var n = 2;
+    while (true) {
+        var taken = false;
+        for (var i = 0; i < store.notes.length; i++) {
+            if (store.notes[i].title.toLowerCase() === name.toLowerCase()) {
+                taken = true;
+                break;
+            }
+        }
+        if (!taken) return name;
+        name = base + "-" + n;
+        n += 1;
+    }
 }
 
 function newFolder(name) {
@@ -81,12 +101,10 @@ function newStore() {
     return {
         version: 1,
         folders: [
-            defaultFolder("inbox", "Notes"),
-            defaultFolder("trash", "Trash")
+            defaultFolder("inbox", "Notes")
         ],
         notes: [],
         settings: {
-            showTrash: false,
             activeFolderId: "inbox",
             activeNoteId: null,
             lastMode: "full",
@@ -112,17 +130,11 @@ function noteMatches(note, query) {
 function filterNotes(notes, opts) {
     opts = opts || {};
     var folderId = opts.folderId == null ? null : String(opts.folderId);
-    var showTrash = !!opts.showTrash;
     var query = opts.query || "";
     var out = [];
     for (var i = 0; i < notes.length; i++) {
         var n = notes[i];
-        if (showTrash) {
-            if (n.deletedAt == null) continue;
-        } else {
-            if (n.deletedAt != null) continue;
-            if (folderId && n.folderId !== folderId) continue;
-        }
+        if (folderId && n.folderId !== folderId) continue;
         if (!noteMatches(n, query)) continue;
         out.push(n);
     }
@@ -207,38 +219,18 @@ function touch(note) {
 }
 
 function setTitle(note, title, body) {
-    note.title = String(title || "").trim() || titleFromBody(body);
+    var trimmed = String(title || "").trim();
+    if (trimmed === "") return;
+    note.title = trimmed;
     touch(note);
 }
-
 function setBody(note, body) {
     note.body = String(body || "");
     touch(note);
-    // Keep title in sync with first line until the user renames explicitly.
-    // The UI calls setTitle on explicit rename; here we always refresh unless
-    // the title does not match the old first line (i.e. user-customized).
-    var derived = titleFromBody(note.body);
-    var oldDerived = titleFromBody(note.body); // body already updated; use title check below
-    if (note.title === "New Note" || note.title === oldDerived) {
-        note.title = derived;
-    }
 }
 
 function togglePinned(note) {
     note.pinned = !note.pinned;
-    touch(note);
-}
-
-function trashNote(note) {
-    if (note.deletedAt != null) return;
-    note.deletedAt = now();
-    note.folderId = "trash";
-    touch(note);
-}
-
-function restoreNote(note) {
-    note.deletedAt = null;
-    note.folderId = "inbox";
     touch(note);
 }
 
@@ -262,8 +254,7 @@ function duplicateNote(store, id) {
         folderId: src.folderId,
         pinned: false,
         created: now(),
-        modified: now(),
-        deletedAt: null
+        modified: now()
     };
     store.notes.push(copy);
     return copy;
@@ -297,14 +288,12 @@ function deserialize(text) {
         }
         if (folders.length > 0) defaults.folders = folders;
     }
-    // Guarantee inbox + trash exist even if a hand-edited file dropped them.
-    var hasInbox = false, hasTrash = false;
+    // Guarantee inbox exists even if a hand-edited file dropped it.
+    var hasInbox = false;
     for (var j = 0; j < defaults.folders.length; j++) {
         if (defaults.folders[j].id === "inbox") hasInbox = true;
-        if (defaults.folders[j].id === "trash") hasTrash = true;
     }
     if (!hasInbox) defaults.folders.unshift(defaultFolder("inbox", "Notes"));
-    if (!hasTrash) defaults.folders.push(defaultFolder("trash", "Trash"));
 
     if (Array.isArray(parsed.notes)) {
         var notes = [];
@@ -318,8 +307,7 @@ function deserialize(text) {
                 folderId: String(n.folderId || "inbox"),
                 pinned: !!n.pinned,
                 created: Number(n.created) || now(),
-                modified: Number(n.modified) || now(),
-                deletedAt: n.deletedAt == null ? null : Number(n.deletedAt)
+                modified: Number(n.modified) || now()
             });
         }
         defaults.notes = notes;
@@ -327,7 +315,6 @@ function deserialize(text) {
 
     if (parsed.settings && typeof parsed.settings === "object") {
         var s = parsed.settings;
-        defaults.settings.showTrash = !!s.showTrash;
         if (typeof s.activeFolderId === "string") defaults.settings.activeFolderId = s.activeFolderId;
         defaults.settings.activeNoteId = typeof s.activeNoteId === "string" ? s.activeNoteId : null;
         if (s.lastMode === "full" || s.lastMode === "quick") defaults.settings.lastMode = s.lastMode;
