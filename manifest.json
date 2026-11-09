@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "nomanur",
   "license": "MIT",
-  "description": "A macOS Notes-style notes app for Omarchy. Three-pane window (folders, note list, Markdown editor) that also opens as a floating Quick Note from the bottom-right hot corner. Summon with: omarchy-shell shell toggle io.github.nomanur.notes",
+  "description": "macOS Notes-style notes app. Three-pane window with Markdown editor and a floating Quick Note from the bottom-right hot corner.",
   "kinds": [
     "panel",
     "service",

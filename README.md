@@ -36,18 +36,8 @@ follows the Omarchy theme automatically.
 
 ## Install
 
-This plugin is **already installed and enabled** on this machine at
-`~/.config/omarchy/plugins/io.github.nomanur.notes`. To install it on
-another Omarchy machine, copy the plugin folder there and enable it:
-
-```
-omarchy plugin enable io.github.nomanur.notes
-```
-
-Or add it from a git URL (if you publish it):
-
-```
-omarchy plugin add <git-url> --enable
+```bash
+omarchy plugin add https://github.com/nomanur/omarchy-macos-notepad.git --enable
 ```
 
 Add the bar button (optional):
@@ -62,10 +52,16 @@ Hide it (the keybind and hot corner keep working):
 omarchy bar set io.github.nomanur.notes showIcon false --json
 ```
 
-Bring it back:
+## Remove
 
+```bash
+omarchy plugin remove io.github.nomanur.notes --yes
 ```
-omarchy bar set io.github.nomanur.notes showIcon true --json
+
+## Updating
+
+```bash
+omarchy plugin update io.github.nomanur.notes
 ```
 
 ## Usage
