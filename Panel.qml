@@ -112,7 +112,7 @@ Item {
         atomicWrites: true
         blockAllReads: true
         preload: false
-        printErrors: false
+        printErrors: true
         onFileChanged: {
             if (root.savingNow) { root.savingNow = false; return; }
             root.readNotes();
@@ -152,10 +152,12 @@ Item {
 
     function refreshActive() {
         if (!root.store) return;
-        // activeNoteId follows the store's selection when the panel reopens
-        // or an external edit lands; otherwise keep what the user picked.
+        // Always adopt the store's persisted selection — including after
+        // reloads and panel reopens — so the note saved as active is what
+        // opens. The !root.activeNoteId guard broke this when the panel
+        // item survived close/reopen (keepLoaded) with a stale selection.
         var fromStore = root.store.settings.activeNoteId;
-        if (fromStore && Store.findNote(root.store, fromStore) && !root.activeNoteId)
+        if (fromStore && Store.findNote(root.store, fromStore))
             root.activeNoteId = fromStore;
         root.recomputeFiltered();
     }
@@ -173,11 +175,18 @@ Item {
             if (root.filteredNotes[i].id === root.activeNoteId) { stillThere = true; break; }
         if (!stillThere) {
             root.activeNoteId = root.filteredNotes.length > 0 ? root.filteredNotes[0].id : "";
+            root.store.settings.activeNoteId = root.activeNoteId || null;
         }
     }
 
+    // Monotonic counter to force QML bindings that read the store to
+    // re-evaluate after in-place JS-object mutations (QML does not track
+    // plain-object fields on `property var store`).
+    property int storeRev: 0
+
     property var activeNote: {
         if (!root.store || !root.activeNoteId) return null;
+        void root.storeRev;
         return Store.findNote(root.store, root.activeNoteId);
     }
 
@@ -192,7 +201,7 @@ Item {
         root.pushUndo(note.id, "");
         root.recomputeFiltered();
         root.scheduleSave();
-        Qt.callLater(function() { editor.focusEditor(); editor.focusEditor(); });
+        Qt.callLater(function() { editor.focusEditor(); });
     }
 
     function getOrCreateQuickNote() {
@@ -228,6 +237,7 @@ Item {
     function editBody(id, body) {
         var n = Store.findNote(root.store, id);
         if (!n) return;
+        if (n.body === body) return; // programmatic echo / no-op
         // Push undo snapshot before mutating, but debounce typing bursts:
         // only snapshot when the previous snapshot is older than 800ms.
         var now = Date.now();
@@ -238,6 +248,7 @@ Item {
             root.redoStack = [];
         }
         Store.setBody(n, body);
+        root.storeRev++;
         root.recomputeFiltered();
         root.scheduleSave();
     }
@@ -255,6 +266,7 @@ Item {
         root.redoStack.push({ noteId: n.id, body: n.body, ts: Date.now() });
         n.body = last.body;
         Store.setBody(n, last.body);
+        root.storeRev++;
         root.activeNoteId = n.id;
         root.recomputeFiltered();
         root.scheduleSave();
@@ -268,6 +280,7 @@ Item {
         root.undoStack.push({ noteId: n.id, body: n.body, ts: Date.now() });
         n.body = last.body;
         Store.setBody(n, last.body);
+        root.storeRev++;
         root.activeNoteId = n.id;
         root.recomputeFiltered();
         root.scheduleSave();
@@ -369,7 +382,7 @@ Item {
     function expandQuick() {
         root.collapsed = false;
         root.store.settings.collapsed = false;
-        Qt.callLater(function() { editor.focusEditor(); });
+        Qt.callLater(function() { quickEditor.focusEditor(); });
     }
 
     // ---- appearance ----------------------------------------------------------

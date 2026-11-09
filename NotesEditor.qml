@@ -74,15 +74,32 @@ Item {
         editor.forceActiveFocus();
     }
 
+    // Guard against programmatic text changes (note switch, undo/redo)
+    // re-entering Panel.editBody via onTextChanged, which would push bogus
+    // undo snapshots and re-sort/reset the selection mid-switch. Set in the
+    // same turn the text is assigned; onTextChanged fires synchronously.
+    property bool blockSignals: false
+
     onNoteChanged: {
-        if (!note) return;
+        if (!note) {
+            blockSignals = true;
+            editor.text = "";
+            blockSignals = false;
+            return;
+        }
         // Switch note text without triggering onTextChanged (which would
         // push a bogus undo snapshot and overwrite the note).
+        blockSignals = true;
         editor.text = note.body || "";
+        blockSignals = false;
     }
 
     Component.onCompleted: {
-        if (note) editor.text = note.body || "";
+        if (note) {
+            blockSignals = true;
+            editor.text = note.body || "";
+            blockSignals = false;
+        }
     }
 
     // ---- layout ----------------------------------------------------------
@@ -134,7 +151,7 @@ Item {
                     placeholderText: "Type here..."
                     placeholderTextColor: Qt.darker(root.foreground, 1.6)
                     background: Item {}
-                    onTextChanged: root.textChanged(text)
+                    onTextChanged: if (!root.blockSignals) root.textChanged(text)
 
                     Keys.onPressed: function(event) {
                         var ctrl = event.modifiers & Qt.ControlModifier;
